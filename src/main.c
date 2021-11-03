@@ -26,7 +26,11 @@ int main(int argc , char** argv){
          break; 
       }
       printf("ehco'd: %s",user_input);
-      struct CmdSequence* cmd = cmd_parse(user_input);
+      struct CmdSequence* cmd = NULL; 
+      cmd = cmd_parse(user_input);
+      if(cmd){
+         cmd_print(cmd);
+      }
       print_prompt(); 
       if(cmd){
          cmd_destroy(cmd);

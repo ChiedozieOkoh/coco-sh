@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <linux/limits.h>
 #include <stdlib.h>
+#include <ctype.h>
 //static bool has_child = false; 
 static char coco_cwd [PATH_MAX] = "\0";  
 
@@ -10,6 +11,13 @@ struct CmdSequence{
    char** cmd_block;
    unsigned int n_cmds;
 }; 
+
+void cmd_print(struct CmdSequence* cmd){
+   for(unsigned int i = 0; i < cmd->n_cmds; i++){
+      printf("cmd[%u] :: <<%s>>\n",i,cmd->cmd_block[i]);
+   }
+}
+
 //helper function to automate malloc checks for struct
 static struct CmdSequence* cmd_create_seq(unsigned int n_cmd_blocks){
    struct CmdSequence* new_cmds; 
@@ -19,14 +27,16 @@ static struct CmdSequence* cmd_create_seq(unsigned int n_cmd_blocks){
    }
    if (n_cmd_blocks == 0){
       free(new_cmds);
+      printf("cmd seq malloc failed 0 arguements expected\n");
       return NULL; 
    }
-   new_cmds->cmd_block = malloc(sizeof(char*) * n_cmd_blocks);
+   new_cmds->cmd_block = malloc(sizeof(char*) * (n_cmd_blocks + 1));
    if (new_cmds->cmd_block == NULL){
       free(new_cmds);
       return NULL; 
    }
-   new_cmds->n_cmds = n_cmd_blocks; 
+   new_cmds->n_cmds = n_cmd_blocks + 1; 
+   new_cmds->cmd_block[n_cmd_blocks] = NULL;// execv requires the last pointer to be null 
    return new_cmds; 
 }
 
@@ -36,18 +46,28 @@ void cmd_destroy(struct CmdSequence* cmd){
    }
    free(cmd);
 }
+static unsigned int str_n_arg(const char* str){
+   
+   char test_0 = '\0'; 
+   sscanf(str," %c",&test_0); 
+   if(test_0 == '\0' ){
+      printf("detected empty input\n");
+      return 0; 
+   }
 
-static unsigned int str_find_char_n(const char* str, char  c,unsigned int size){
    unsigned int count = 0; 
-   unsigned int i = 0; 
-   while (*str != '\0' && i < size){
-      if(*str == c){
+   bool onWord = false; 
+   while(*str != '\0'){
+      if(!isspace(*str) && (onWord ==false)){
          count++; 
+         onWord = true; 
+      }
+      if(isspace(*str)){
+         onWord = false; 
       }
       str++; 
-      i++; 
    }
-   return count; 
+   return count;  
 }
 bool coco_set_cwd(const char* src_dir){
    if(src_dir == NULL){
@@ -68,33 +88,42 @@ bool coco_set_cwd(const char* src_dir){
 void print_prompt(void){
    printf("coco[%s]>>",coco_cwd);
 }
-
 struct CmdSequence* cmd_parse(char* cmd_str){
+   //TODO use valgrind to look at memoroy leak int this function
+   unsigned int arg_count = 0; 
+   // ARG_TOKEN is defined in coconut.h
+   const char ARG_CHARS [] = ARG_TOKEN; 
    printf("[coco:info]cmd string given: %s\n",cmd_str);
-   const char CNSEC_CHAR = CNSEC_EXEC_TOKEN; 
-   //TODO consider making str_find_char_n return -1 for empty strings
-   unsigned int cmd_count = str_find_char_n(cmd_str,CNSEC_EXEC_TOKEN,PATH_MAX) + 1;
-   printf("%u commands\n",cmd_count); 
-   printf("[coco:info] string after substr operation %s\n",cmd_str);
-   struct CmdSequence* new_cmd =  cmd_create_seq(cmd_count);
+   arg_count = str_n_arg(cmd_str);
+   printf("[coco:info] %u arguement/s given\n",arg_count);
+   
+   printf("[coco:info] cmd string after arg count opr: %s\n",cmd_str);
+   
+   struct CmdSequence* new_cmd = cmd_create_seq(arg_count);
+   
+   
    if(new_cmd == NULL){
       COCO_ERR("memory alloc failed\n");
       return NULL; 
    }
-   char* tmp_token; 
-   
-   tmp_token = strtok(cmd_str,&CNSEC_CHAR); 
-   unsigned int i =0; 
-   
-   while(tmp_token != NULL && i < cmd_count){
-      printf("[coco:info] :: cmd identified: %s \n",tmp_token);
+   // split string by ARG_CHARS and store the splits inside the cmd sequence obj
+   char* tmp_token = NULL;  
+   unsigned int i = 0; 
+   tmp_token = strtok(cmd_str,ARG_CHARS); 
+   while(tmp_token != NULL && i < arg_count){
+      printf("[coco:info] :: cmd identified: <<%s>> \n",tmp_token);
 
-      new_cmd->cmd_block[i] = malloc(sizeof(char) * strlen(tmp_token)); 
-      strncpy(new_cmd->cmd_block[i],tmp_token,strlen(tmp_token));
+      //(strlen(tmp_token) + 1) includes space for null terminator
+      new_cmd->cmd_block[i] = malloc(sizeof(char) * (strlen(tmp_token)+1)); 
+      strncpy(new_cmd->cmd_block[i],tmp_token,strlen(tmp_token) + 1);
 
-      tmp_token = strtok(NULL,&CNSEC_CHAR);
+      tmp_token = strtok(NULL,ARG_CHARS);
       i++; 
    }
-   
    return new_cmd; 
 }
+/*
+void cmd_execute(struct CmdSequence* cmd){
+   
+
+}*/
