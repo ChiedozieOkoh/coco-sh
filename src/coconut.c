@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <linux/limits.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 #include <ctype.h>
 //static bool has_child = false; 
@@ -86,18 +87,22 @@ bool coco_set_cwd(const char* src_dir){
    return true; 
 }
 void print_prompt(void){
-   printf("coco[%s]>>",coco_cwd);
+   //printf(ESC_BLUE"coco[%s]>>"ESC_RESET,coco_cwd);
+   printf(ESC_BLUE"coco["ESC_RESET); 
+   printf("%s",coco_cwd); 
+   printf(ESC_BLUE"]>>"ESC_RESET);
 }
 struct CmdSequence* cmd_parse(char* cmd_str){
    //TODO use valgrind to look at memoroy leak int this function
+   //TODO handle expanding '~' '.' and '..' symbols 
    unsigned int arg_count = 0; 
    // ARG_TOKEN is defined in coconut.h
    const char ARG_CHARS [] = ARG_TOKEN; 
-   printf("[coco:info]cmd string given: %s\n",cmd_str);
+   //printf("[coco:info]cmd string given: %s\n",cmd_str);
    arg_count = str_n_arg(cmd_str);
-   printf("[coco:info] %u arguement/s given\n",arg_count);
+   //printf("[coco:info] %u arguement/s given\n",arg_count);
    
-   printf("[coco:info] cmd string after arg count opr: %s\n",cmd_str);
+   //printf("[coco:info] cmd string after arg count opr: %s\n",cmd_str);
    
    struct CmdSequence* new_cmd = cmd_create_seq(arg_count);
    
@@ -111,19 +116,64 @@ struct CmdSequence* cmd_parse(char* cmd_str){
    unsigned int i = 0; 
    tmp_token = strtok(cmd_str,ARG_CHARS); 
    while(tmp_token != NULL && i < arg_count){
-      printf("[coco:info] :: cmd identified: <<%s>> \n",tmp_token);
+      //printf("[coco:info] :: cmd identified: <<%s>> \n",tmp_token);
 
       //(strlen(tmp_token) + 1) includes space for null terminator
       new_cmd->cmd_block[i] = malloc(sizeof(char) * (strlen(tmp_token)+1)); 
       strncpy(new_cmd->cmd_block[i],tmp_token,strlen(tmp_token) + 1);
-
+      
       tmp_token = strtok(NULL,ARG_CHARS);
       i++; 
    }
+   // replace trailing \n with \0
+   //n_cmds -1 would point to the last pointer 
+   // the last pointer is always NULL so that the array is NULL terminated
+   // thus the n_cmds -2
+   char* cmd_alias = new_cmd->cmd_block[new_cmd->n_cmds -2]; 
+   if(cmd_alias[strlen(cmd_alias) -1] == '\n'){
+      cmd_alias[strlen(cmd_alias) -1] = '\0'; 
+   }
+
+
    return new_cmd; 
 }
-/*
 void cmd_execute(struct CmdSequence* cmd){
-   
-
-}*/
+   if(cmd == NULL){
+      return; 
+   }
+   char final_cmd_path [256] = COCO_PATH; 
+   strncat(final_cmd_path,cmd->cmd_block[0],30);
+   // only the parent process(the shell) should change directory 
+   if(strncmp(cmd->cmd_block[0],"cd",2) == 0){
+      if(cmd->cmd_block[2] != NULL){
+         COCO_ERR("cd : too many arguements\n");
+         return; 
+      }
+      if(cmd->cmd_block[1] == NULL){
+         coco_set_cwd("/home"); 
+         return; 
+      }
+      coco_set_cwd(cmd->cmd_block[1]);
+      return; 
+   } 
+   pid_t pid = fork(); 
+   if(pid < 0){
+      COCO_PERROR();
+      return;
+   }
+   if(pid == 0){
+      // run cmd in child process
+         //printf("child process : %i\n",pid);
+         int result = execv(&final_cmd_path[0],cmd->cmd_block); 
+         if(result < 1){
+            COCO_PERROR_MSG("Child process error");
+            exit(EXIT_FAILURE);
+         }
+   }
+   //block parent until child status changes 
+   if(pid > 0){
+      int status; 
+         //printf("parent process : %i\n",pid);
+         waitpid(pid,&status,0);
+   }
+}
