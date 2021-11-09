@@ -27,7 +27,7 @@ void print_prompt(void);
 bool coco_set_cwd(const char*); 
 
 struct CmdSequence* cmd_parse(char*);//split a string of commands into parts
-void cmd_destroy(struct CmdSequence*); 
+void cmd_destroy(struct CmdSequence**); 
 
 void cmd_print(struct CmdSequence*);
 void cmd_execute(struct CmdSequence*);//execute a cmd with arguements

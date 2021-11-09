@@ -1,5 +1,5 @@
 CC := gcc
-C_FLAGS := -g -Wextra -Wall -Wpedantic -Werror -iquoteinclude
+C_FLAGS := -ggdb3 -Wextra -Wall -Wpedantic -Werror -iquoteinclude
 SRC := $(wildcard src/*.c)
 BIN_DIR := bin/
 EXEC := coconut

@@ -41,11 +41,13 @@ static struct CmdSequence* cmd_create_seq(unsigned int n_cmd_blocks){
    return new_cmds; 
 }
 
-void cmd_destroy(struct CmdSequence* cmd){
-   for(unsigned int i = 0; i < cmd->n_cmds; i++){
-      free(cmd->cmd_block[i]);
+void cmd_destroy(struct CmdSequence** cmd){
+   for(unsigned int i = 0; i < (*cmd)->n_cmds; i++){
+      free((*cmd)->cmd_block[i]);
+      (*cmd)->cmd_block[i] = NULL; 
    }
-   free(cmd);
+   free(*cmd);
+   *cmd = NULL; 
 }
 static unsigned int str_n_arg(const char* str){
    
@@ -117,11 +119,9 @@ struct CmdSequence* cmd_parse(char* cmd_str){
    tmp_token = strtok(cmd_str,ARG_CHARS); 
    while(tmp_token != NULL && i < arg_count){
       //printf("[coco:info] :: cmd identified: <<%s>> \n",tmp_token);
-
       //(strlen(tmp_token) + 1) includes space for null terminator
       new_cmd->cmd_block[i] = malloc(sizeof(char) * (strlen(tmp_token)+1)); 
       strncpy(new_cmd->cmd_block[i],tmp_token,strlen(tmp_token) + 1);
-      
       tmp_token = strtok(NULL,ARG_CHARS);
       i++; 
    }
@@ -145,12 +145,12 @@ void cmd_execute(struct CmdSequence* cmd){
    strncat(final_cmd_path,cmd->cmd_block[0],30);
    // only the parent process(the shell) should change directory 
    if(strncmp(cmd->cmd_block[0],"cd",2) == 0){
-      if(cmd->cmd_block[2] != NULL){
-         COCO_ERR("cd : too many arguements\n");
-         return; 
-      }
       if(cmd->cmd_block[1] == NULL){
          coco_set_cwd("/home"); 
+         return; 
+      }
+      if(cmd->cmd_block[2] != NULL){
+         COCO_ERR("cd : too many arguements\n");
          return; 
       }
       coco_set_cwd(cmd->cmd_block[1]);
@@ -167,13 +167,24 @@ void cmd_execute(struct CmdSequence* cmd){
          int result = execv(&final_cmd_path[0],cmd->cmd_block); 
          if(result < 1){
             COCO_PERROR_MSG("Child process error");
+            cmd_destroy(&cmd);
             exit(EXIT_FAILURE);
+         }else{
+            cmd_destroy(&cmd);
+            exit(EXIT_SUCCESS); 
          }
    }
    //block parent until child status changes 
    if(pid > 0){
       int status; 
          //printf("parent process : %i\n",pid);
-         waitpid(pid,&status,0);
+      pid_t wait_status; 
+      wait_status = waitpid(pid,&status,0);
+      if(wait_status == -1){
+         perror("wait pid status"); 
+      }
+      if(WIFEXITED(status)){
+         printf("child exited normally status code:%d\n",WEXITSTATUS(status));
+      }
    }
 }

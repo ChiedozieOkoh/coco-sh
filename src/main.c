@@ -27,16 +27,16 @@ int main(int argc , char** argv){
       if (strncmp(user_input,"exit\0",4) == 0){
          break; 
       }
-      printf("ehco'd: %s",user_input);
+      //printf("ehco'd: %s",user_input);
       struct CmdSequence* cmd = NULL; 
       cmd = cmd_parse(user_input);
       if(cmd){
-         //cmd_print(cmd);
+         cmd_print(cmd);
          cmd_execute(cmd);
       }
       print_prompt(); 
       if(cmd){
-         cmd_destroy(cmd);
+         cmd_destroy(&cmd);
       }
    } 
    printf("\n");
