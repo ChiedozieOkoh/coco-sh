@@ -28,15 +28,19 @@ static struct CmdSequence* cmd_create_seq(unsigned int n_cmd_blocks){
    }
    if (n_cmd_blocks == 0){
       free(new_cmds);
-      printf("cmd seq malloc failed 0 arguements expected\n");
+      printf("cmd seq malloc failed 0 arguements given!\n");
       return NULL; 
    }
-   new_cmds->cmd_block = malloc(sizeof(char*) * (n_cmd_blocks + 1));
+   new_cmds->cmd_block = NULL; 
+   new_cmds->cmd_block = malloc((n_cmd_blocks + 1) * sizeof(char*));
    if (new_cmds->cmd_block == NULL){
       free(new_cmds);
       return NULL; 
    }
    new_cmds->n_cmds = n_cmd_blocks + 1; 
+   /*for(unsigned int i = 1 ; i < new_cmds->n_cmds; i++){
+      new_cmds->cmd_block[i] = NULL; 
+   }*/
    new_cmds->cmd_block[n_cmd_blocks] = NULL;// execv requires the last pointer to be null 
    return new_cmds; 
 }
@@ -94,14 +98,16 @@ void print_prompt(void){
    printf("%s",coco_cwd); 
    printf(ESC_BLUE"]>>"ESC_RESET);
 }
-struct CmdSequence* cmd_parse(char* cmd_str){
-   //TODO use valgrind to look at memoroy leak int this function
+struct CmdSequence* cmd_parse(const char* const  cmd_str){
    //TODO handle expanding '~' '.' and '..' symbols 
    unsigned int arg_count = 0; 
    // ARG_TOKEN is defined in coconut.h
    const char ARG_CHARS [] = ARG_TOKEN; 
    //printf("[coco:info]cmd string given: %s\n",cmd_str);
-   arg_count = str_n_arg(cmd_str);
+   char temp_cmd_str [PATH_MAX] = "\0"; 
+   memcpy(temp_cmd_str,cmd_str,strlen(cmd_str));
+   arg_count = str_n_arg(temp_cmd_str);
+   
    //printf("[coco:info] %u arguement/s given\n",arg_count);
    
    //printf("[coco:info] cmd string after arg count opr: %s\n",cmd_str);
@@ -116,7 +122,7 @@ struct CmdSequence* cmd_parse(char* cmd_str){
    // split string by ARG_CHARS and store the splits inside the cmd sequence obj
    char* tmp_token = NULL;  
    unsigned int i = 0; 
-   tmp_token = strtok(cmd_str,ARG_CHARS); 
+   tmp_token = strtok(temp_cmd_str,ARG_CHARS); 
    while(tmp_token != NULL && i < arg_count){
       //printf("[coco:info] :: cmd identified: <<%s>> \n",tmp_token);
       //(strlen(tmp_token) + 1) includes space for null terminator
@@ -133,7 +139,6 @@ struct CmdSequence* cmd_parse(char* cmd_str){
    if(cmd_alias[strlen(cmd_alias) -1] == '\n'){
       cmd_alias[strlen(cmd_alias) -1] = '\0'; 
    }
-
 
    return new_cmd; 
 }
@@ -187,4 +192,40 @@ void cmd_execute(struct CmdSequence* cmd){
          printf("child exited normally status code:%d\n",WEXITSTATUS(status));
       }
    }
+}
+struct CmdSequence** syntax_parse(const char* string,int* cmd_number){
+   char* cmd_branch = NULL; 
+   //char* CNSEC_TOKEN = CNSEC_EXEC_TOKEN; 
+   int count = 0;  
+   char temp_cmd_string [PATH_MAX] = "\0"; 
+   char* temp_cmd_store[MAX_CMD_BRANCHES] = {0}; 
+   struct CmdSequence** cmd_array = NULL;  
+   memcpy(temp_cmd_string,string,strlen(string) ); 
+   cmd_branch = strtok(temp_cmd_string,CNSEC_EXEC_TOKEN); 
+   while(cmd_branch != NULL && count < MAX_CMD_BRANCHES){
+      printf("cmd branch --[%s]--\n",cmd_branch);
+      if(str_n_arg(cmd_branch)){
+         temp_cmd_store[count] = cmd_branch;
+         count++; 
+      }
+      cmd_branch = strtok(NULL,CNSEC_EXEC_TOKEN); 
+   } 
+   if (count == 0 ){
+      return NULL; 
+   }
+
+   printf(ESC_GREEN"parsed cmd sequences ..."ESC_RESET"\n");
+   cmd_array = malloc(sizeof(struct CmdSequnce*) * count); 
+   for(int i = 0; i < count ; i++){
+      //struct CmdSequence* temp_cmd = NULL; 
+      cmd_array[i] = cmd_parse(temp_cmd_store[i]);
+      /*if(cmd_array[i]){
+         cmd_print(cmd_array[i]);
+      }
+      cmd_destroy(&cmd_array[i]);
+      printf("\n");*/
+   }
+   //free(cmd_array);
+   *cmd_number = count; 
+   return cmd_array; 
 }
