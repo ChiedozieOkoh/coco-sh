@@ -53,7 +53,7 @@ void cmd_destroy(struct CmdSequence** cmd){
    free(*cmd);
    *cmd = NULL; 
 }
-bool is_exit(const char* input){
+/*bool is_exit(const char* input){
    while(*input == ' '){
       input++; 
    }
@@ -65,6 +65,21 @@ bool is_exit(const char* input){
       return false; 
    }
    return true; 
+}*/
+// comparisions ignore non-alphanumeric-charachters
+// at most compares n+1 characters from each string(excluding leading white space)
+bool coco_str_compare(const char* str, const char* substring, int n){
+   while(*str == ' '){
+      str++; 
+   }
+   if(strncmp(str,substring,n) != 0){
+      return false; 
+   }
+   str += n; 
+   if(isspace(*str)|| iscntrl(*str)){
+      return true; 
+   }
+   return false; 
 }
 static unsigned int str_n_arg(const char* str){
    
@@ -162,7 +177,7 @@ void cmd_execute(struct CmdSequence* cmd){
    char final_cmd_path [256] = COCO_PATH; 
    strncat(final_cmd_path,cmd->cmd_block[0],30);
    // only the parent process(the shell) should change directory 
-   if(strncmp(cmd->cmd_block[0],"cd",2) == 0){
+   if(coco_str_compare(cmd->cmd_block[0],"cd",2)){
       if(cmd->cmd_block[1] == NULL){
          coco_set_cwd("/home"); 
          return; 

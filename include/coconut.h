@@ -23,7 +23,9 @@
 #define MAX_CMD_BRANCHES 100
 struct CmdSequence; 
 typedef int(*cmd_handle)(const char**); 
-
+// like str_compare but ignores leading spaces, will also check for trailing spaces
+// ie comparing "x\0" , "x \0" and " x \0" will all return the same result
+bool coco_str_compare(const char* , const char* , int); 
 void print_prompt(void); 
 bool coco_set_cwd(const char*); 
 

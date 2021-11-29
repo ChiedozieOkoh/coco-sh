@@ -2,6 +2,21 @@
 #include <stdlib.h>
 #include "coconut.h"
 #include <assert.h>
+void test_str_compare(void){
+   bool result_a , result_b , result_c; 
+   char* test_str_a = "x"; 
+   char* test_str_b = " x"; 
+   char* test_str_c = " x "; 
+   char* cmp_str = "x";
+   result_a = coco_str_compare(test_str_a,cmp_str,1);  
+   result_b = coco_str_compare(test_str_b,cmp_str,1); 
+   result_c = coco_str_compare(test_str_c,cmp_str,1);
+   assert(result_a == true);
+   assert(result_b == true);
+   assert(result_c == true);
+   printf(ESC_GREEN"str_compare tests passed\n"ESC_RESET);
+   printf("[%s] is equivalent to: [%s][%s][%s]\n",cmp_str,test_str_a,test_str_b,test_str_c);
+}
 void test_syntax(char*string){
    int branches = 0; 
    struct CmdSequence** cmd_array = NULL; 
@@ -31,6 +46,7 @@ int main(void){
    //test_cmd_create(); 
    char test_arr[]  = "ls ; sl; al; ;prior empty\n"; 
    test_syntax(test_arr);
+   test_str_compare();
    
    return EXIT_SUCCESS; 
 }
