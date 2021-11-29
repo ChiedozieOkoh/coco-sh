@@ -3,19 +3,31 @@
 #include "coconut.h"
 #include <assert.h>
 void test_str_compare(void){
-   bool result_a , result_b , result_c; 
+   bool result_a , result_b , result_c , result_d , result_e , result_f; 
    char* test_str_a = "x"; 
    char* test_str_b = " x"; 
    char* test_str_c = " x "; 
+   char* test_str_d = " xd"; 
+   char* test_str_e = " x$"; 
+   char* test_str_f = "y"; 
    char* cmp_str = "x";
+   
    result_a = coco_str_compare(test_str_a,cmp_str,1);  
    result_b = coco_str_compare(test_str_b,cmp_str,1); 
    result_c = coco_str_compare(test_str_c,cmp_str,1);
+   result_d = coco_str_compare(test_str_d,cmp_str,1);
+   result_e = coco_str_compare(test_str_e,cmp_str,1);
+   result_f = coco_str_compare(test_str_f,cmp_str,1);
    assert(result_a == true);
    assert(result_b == true);
    assert(result_c == true);
+   assert(result_d == false); 
+   assert(result_e == false); 
+   assert(result_f == false);
+
    printf(ESC_GREEN"str_compare tests passed\n"ESC_RESET);
    printf("[%s] is equivalent to: [%s][%s][%s]\n",cmp_str,test_str_a,test_str_b,test_str_c);
+   printf("[%s] is not equivalent to: [%s][%s][%s]\n",cmp_str,test_str_e,test_str_d,test_str_f);
 }
 void test_syntax(char*string){
    int branches = 0; 
