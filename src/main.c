@@ -24,14 +24,17 @@ int main(int argc , char** argv){
    print_prompt(); 
    char user_input [PATH_MAX] = "\0"; 
    while(fgets(user_input,PATH_MAX,stdin) != NULL){
-      if (strncmp(user_input,"exit\0",4) == 0){
+      /*if (strncmp(user_input,"exit\n",5) == 0){
+         break; 
+      }*/
+      if(is_exit(user_input)){
          break; 
       }
       //printf("ehco'd: %s",user_input);
       struct CmdSequence* cmd = NULL; 
       cmd = cmd_parse(user_input);
       if(cmd){
-         cmd_print(cmd);
+         //cmd_print(cmd);
          cmd_execute(cmd);
       }
       print_prompt(); 

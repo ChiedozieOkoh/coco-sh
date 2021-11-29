@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
 #define COCO_PERROR() perror("[coco:err]") 
 #define COCO_PERROR_MSG(msg) perror("[coco:err]:: "msg)
 #define COCO_ERR(msg) fprintf(stderr,"[coco:err]:: "msg)
@@ -31,3 +30,5 @@ void cmd_destroy(struct CmdSequence**);
 
 void cmd_print(struct CmdSequence*);
 void cmd_execute(struct CmdSequence*);//execute a cmd with arguements
+bool is_exit(const char* intput); 
+

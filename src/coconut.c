@@ -28,7 +28,7 @@ static struct CmdSequence* cmd_create_seq(unsigned int n_cmd_blocks){
    }
    if (n_cmd_blocks == 0){
       free(new_cmds);
-      printf("cmd seq malloc failed 0 arguements expected\n");
+      //printf("cmd seq malloc failed 0 arguements expected\n");
       return NULL; 
    }
    new_cmds->cmd_block = malloc(sizeof(char*) * (n_cmd_blocks + 1));
@@ -49,12 +49,25 @@ void cmd_destroy(struct CmdSequence** cmd){
    free(*cmd);
    *cmd = NULL; 
 }
+bool is_exit(const char* input){
+   while(*input == ' '){
+      input++; 
+   }
+   if(strncmp(input,"exit",4) !=0){
+      return false; 
+   }
+   input += 4;
+   if(isalnum(*input)){
+      return false; 
+   }
+   return true; 
+}
 static unsigned int str_n_arg(const char* str){
    
    char test_0 = '\0'; 
    sscanf(str," %c",&test_0); 
    if(test_0 == '\0' ){
-      printf("detected empty input\n");
+      //printf("detected empty input\n");
       return 0; 
    }
 
@@ -110,7 +123,7 @@ struct CmdSequence* cmd_parse(char* cmd_str){
    
    
    if(new_cmd == NULL){
-      COCO_ERR("memory alloc failed\n");
+      //COCO_ERR("memory alloc failed\n");
       return NULL; 
    }
    // split string by ARG_CHARS and store the splits inside the cmd sequence obj
@@ -166,7 +179,8 @@ void cmd_execute(struct CmdSequence* cmd){
          //printf("child process : %i\n",pid);
          int result = execv(&final_cmd_path[0],cmd->cmd_block); 
          if(result < 1){
-            COCO_PERROR_MSG("Child process error");
+            //COCO_PERROR_MSG("Child process error");
+            COCO_ERR("unknown command\n");
             cmd_destroy(&cmd);
             exit(EXIT_FAILURE);
          }else{
@@ -184,7 +198,7 @@ void cmd_execute(struct CmdSequence* cmd){
          perror("wait pid status"); 
       }
       if(WIFEXITED(status)){
-         printf("child exited normally status code:%d\n",WEXITSTATUS(status));
+         //printf("child exited normally status code:%d\n",WEXITSTATUS(status));
       }
    }
 }
