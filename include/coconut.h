@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #define COCO_PERROR() perror("[coco:err]") 
 #define COCO_PERROR_MSG(msg) perror("[coco:err]:: "msg)
 #define COCO_ERR(msg) fprintf(stderr,"[coco:err]:: "msg)
@@ -21,6 +22,9 @@
 #define ESC_MAGENTA "\x1b[1;35m"
 #define ESC_RESET "\x1b[1;0m"
 #define MAX_CMD_BRANCHES 100
+#define MAX_JOBS 2
+#define MAX_DESCRIPTION_LEN 32
+
 struct CmdSequence; 
 typedef int(*cmd_handle)(const char**); 
 // like str_compare but ignores leading spaces, will also check for trailing spaces
@@ -34,8 +38,9 @@ void cmd_destroy(struct CmdSequence**);
 
 void cmd_print(struct CmdSequence*);
 void cmd_execute(struct CmdSequence*);//execute a cmd with arguements
+void cmd_exec_async(struct CmdSequence*);
 bool is_exit(const char* intput); 
-
+void init_handlers(struct sigaction*);
 
 struct CmdSequence**  syntax_parse(const char* const,int*); // split command chain into seperate commands 
 //e.g syntax_parse("ls /home/ ; ls /home/joeblogs",(int*)foo); 

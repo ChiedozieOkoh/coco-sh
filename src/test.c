@@ -2,6 +2,30 @@
 #include <stdlib.h>
 #include "coconut.h"
 #include <assert.h>
+
+void test_async_exec(void){
+   setlinebuf(stdout); 
+   setlinebuf(stdin);
+   struct sigaction sa; 
+   init_handlers(&sa);
+   char test_str[] = "mpv  --really-quiet ./bin/chillstep.wav &";
+   char user_input[64] = "\0"; 
+   struct CmdSequence* cmd = NULL; 
+   cmd = cmd_parse(test_str);
+   //cmd_print(cmd);
+   cmd_exec_async(cmd);
+   //print_prompt(); 
+   while(fgets(user_input,64,stdin) != NULL){
+      if(coco_str_compare(user_input,"exit",4)){
+         printf("%s",user_input);
+         break; 
+      }
+      print_prompt(); 
+   }
+   if(cmd){
+      cmd_destroy(&cmd);
+   }
+}
 void test_str_compare(void){
    bool result_a , result_b , result_c , result_d , result_e , result_f; 
    char* test_str_a = "x"; 
@@ -59,6 +83,6 @@ int main(void){
    char test_arr[]  = "ls ; sl; al; ;prior empty\n"; 
    test_syntax(test_arr);
    test_str_compare();
-   
+   test_async_exec();  
    return EXIT_SUCCESS; 
 }

@@ -21,6 +21,8 @@ int main(int argc , char** argv){
          exit(EXIT_FAILURE);
       }
    }
+   struct sigaction sa; 
+   init_handlers(&sa);
    print_prompt(); 
    char user_input [PATH_MAX] = "\0"; 
    while(fgets(user_input,PATH_MAX,stdin) != NULL){

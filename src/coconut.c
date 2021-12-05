@@ -7,7 +7,12 @@
 #include <ctype.h>
 //static bool has_child = false; 
 static char coco_cwd [PATH_MAX] = "\0";  
-
+static pid_t coco_jobs[MAX_JOBS] = {0}; 
+static const pid_t JOB_DONE = -1; 
+static const pid_t JOB_FREE = 0; 
+static char coco_job_descriptions[MAX_JOBS][MAX_DESCRIPTION_LEN] = {0};
+static volatile int coco_current_jobs = -1;  
+//static const pid_t PID_DONE = -1; 
 struct CmdSequence{
    char** cmd_block;
    unsigned int n_cmds;
@@ -104,6 +109,16 @@ static unsigned int str_n_arg(const char* str){
    }
    return count;  
 }
+int coco_find_next_job(void){
+   int result = -1; 
+   for(int i = 0; i < MAX_JOBS; i++ ){
+      if(coco_jobs[i] == 0){
+         result = i; 
+         break; 
+      }
+   }
+   return result; 
+}
 bool coco_set_cwd(const char* src_dir){
    if(src_dir == NULL){
       fprintf(stderr,"directory given was null\n");
@@ -122,6 +137,12 @@ bool coco_set_cwd(const char* src_dir){
 }
 void print_prompt(void){
    //printf(ESC_BLUE"coco[%s]>>"ESC_RESET,coco_cwd);
+   for(int i = 0; i < MAX_JOBS ; i++){
+      if(coco_jobs[i] == JOB_DONE){
+         printf("[%i]Done : %s\n",i,coco_job_descriptions[i]);
+         coco_jobs[i] = JOB_FREE;    
+      }
+   }
    printf(ESC_BLUE"coco["ESC_RESET); 
    printf("%s",coco_cwd); 
    printf(ESC_BLUE"]>>"ESC_RESET);
@@ -222,6 +243,109 @@ void cmd_execute(struct CmdSequence* cmd){
       }
    }
 }
+
+void cmd_exec_async(struct CmdSequence* cmd){
+   if(cmd == NULL){
+      return; 
+   }
+   if(coco_str_compare(cmd->cmd_block[0],"cd",2)){
+      return; //cannot change directory asynchronously
+   }
+   if(coco_str_compare(cmd->cmd_block[0],"ls",2)){
+      return; 
+   }
+   if(coco_str_compare(cmd->cmd_block[0],"jobs",2)){
+      return; 
+   }
+   
+   char* arg_alias[MAX_CMD_BRANCHES] = {0};  
+   printf("%s",arg_alias[0]);
+   for(unsigned int i = 0; i < cmd->n_cmds -1; i++){
+      //check for null because args passed to execvX are null terminated
+      if(cmd->cmd_block[i][0] != '&'){
+        arg_alias[i] = cmd->cmd_block[i];  
+      }else{
+         arg_alias[i] = NULL; 
+      }
+   }
+   
+   //printf("%s\n",arg_alias[0]);
+   cmd_print(cmd);
+   //parent waits for a child to finish
+   if(coco_current_jobs ==  MAX_JOBS){
+      //pid_t oldest_job = coco_jobs[0];
+     // waitpid(oldest_job);
+     return; 
+   }
+   //log new job as parent process
+   coco_current_jobs++; 
+   pid_t pid = fork(); 
+   if(pid < 0){
+      COCO_PERROR_MSG("could not fork\n");
+      return; 
+   }
+   if(pid == 0){
+      char final_cmd_path [256] = COCO_PATH; 
+      strncat(final_cmd_path,cmd->cmd_block[0],30);
+      //TODO redirect stdin of child process 
+      // run cmd in child process
+         //printf("child process : %i\n",pid);
+         int result = execv(&final_cmd_path[0],arg_alias); 
+         if(result < 1){
+            //COCO_PERROR_MSG("Child process error");
+            COCO_ERR("unknown command\n");
+            cmd_destroy(&cmd);
+            exit(EXIT_FAILURE);
+         }else{
+            cmd_destroy(&cmd);
+            exit(EXIT_SUCCESS); 
+         }
+   }
+   if(pid > 0){
+      //record job pid and command 
+      coco_jobs[coco_current_jobs] = pid; 
+      const char* next_letter = cmd->cmd_block[0]; 
+      int i = 0; 
+      while(*next_letter != '\0' && i < MAX_DESCRIPTION_LEN){
+         coco_job_descriptions[coco_current_jobs][i] = *next_letter; 
+         //printf("%c",*next_letter);
+         next_letter++; 
+         i++; 
+      }
+      
+      coco_job_descriptions[coco_current_jobs][i] = '\0';
+      printf("job summary\n");
+      printf("[%i] %s\n",coco_current_jobs,
+            coco_job_descriptions[coco_current_jobs]);
+      
+   }
+}
+
+void notify_on_exit(int signal){
+   pid_t pid; 
+   int status; 
+
+   if(signal != SIGCHLD){
+      return; 
+   }
+
+   if(coco_current_jobs == -1){
+      //COCO_INFO("ignored callback \n");
+      return; //we aren't running anything asynchronously 
+   }
+
+   pid = waitpid(-1,&status,WNOHANG);
+   //printf("hello\n");
+   while(pid  > 0){
+      //printf("%d",pid);
+      coco_jobs[coco_current_jobs] = JOB_DONE; 
+      pid = waitpid(-1,&status,WNOHANG);
+      coco_current_jobs--; 
+   }
+   /*while(1){
+      pid = waitpid(-1,NULL,);
+   }*/
+}
 struct CmdSequence** syntax_parse(const char* string,int* cmd_number){
    char* cmd_branch = NULL; 
    //char* CNSEC_TOKEN = CNSEC_EXEC_TOKEN; 
@@ -257,4 +381,14 @@ struct CmdSequence** syntax_parse(const char* string,int* cmd_number){
    //free(cmd_array);
    *cmd_number = count; 
    return cmd_array; 
+}
+
+void init_handlers(struct sigaction* sa){
+   sa->sa_handler = notify_on_exit;  
+   sigemptyset(&sa->sa_mask);
+   int result = sigaction(SIGCHLD,sa,NULL);
+   if(result == -1){
+      COCO_ERR("failed to initialise signal handlers\n");
+      exit(EXIT_FAILURE);
+   }
 }
