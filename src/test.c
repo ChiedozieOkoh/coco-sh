@@ -8,7 +8,7 @@ void test_async_exec(void){
    setlinebuf(stdin);
    struct sigaction sa; 
    init_handlers(&sa);
-   char test_str[] = "mpv  --really-quiet ./bin/chillstep.wav &";
+   char test_str[] = "ping www.google.com -c 10 &";
    char user_input[64] = "\0"; 
    struct CmdSequence* cmd = NULL; 
    cmd = cmd_parse(test_str);
